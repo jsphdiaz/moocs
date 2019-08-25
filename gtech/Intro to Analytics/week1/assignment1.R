@@ -1,14 +1,14 @@
 install.packages('kernlab')
 library('kernlab')
 
-
+setwd('Documents/Github/moocs/gtech/Intro to Analytics/week1')
 data <- as.matrix(read.table('credit_card_data.txt', sep = '\t'))
-data <- read.table('credit_card_data.txt', sep = '\t')
+#data <- read.table('credit_card_data.txt', sep = '\t')
 
 
 # call ksvm. Vanilladot is a simple linear kernel.
-model <- ksvm(data[,1:10],data[,11],type="C-svc",kernel="vanilladot",C=10000000,scaled=TRUE)
-model <- ksvm(as.matrix(data[,1:10]),as.factor(data[,11]),type="C-svc",kernel="vanilladot",C=100,scaled=TRUE)
+model <- ksvm(data[,1:10],data[,11],type="C-svc",kernel="rbfdot",C=9000000,scaled=TRUE)
+#model <- ksvm(as.matrix(data[,1:10]),as.factor(data[,11]),type="C-svc",kernel="vanilladot",C=100,scaled=TRUE)
 
 
 # calculate a1…am
