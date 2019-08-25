@@ -1,0 +1,69 @@
+---
+title: "Homework 1"
+author: "Joe Diaz"
+date: "8/23/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+**Question 2.1**
+
+Describe a situation or problem from your job, everyday life, current events, etc., for which a
+classification model would be appropriate. List some (up to 5) predictors that you might use.
+
+
+**Question 2.2**
+
+The files credit_card_data.txt (without headers) and credit_card_data-headers.txt
+(with headers) contain a dataset with 654 data points, 6 continuous and 4 binary predictor variables. It
+has anonymized credit card applications with a binary response variable (last column) indicating if the
+application was positive or negative. The dataset is the “Credit Approval Data Set” from the UCI Machine
+Learning Repository (https://archive.ics.uci.edu/ml/datasets/Credit+Approval) without the categorical
+variables and without data points that have missing values.
+
+
+1. Using the support vector machine function ksvm contained in the R package kernlab, find a
+good classifier for this data. Show the equation of your classifier, and how well it classifies the
+data points in the full data set. (Don’t worry about test/validation data yet; we’ll cover that
+topic soon.)
+
+```{r cars}
+#install.packages('kernlab')
+library('kernlab')
+
+
+data <- as.matrix(read.table('credit_card_data.txt', sep = '\t'))
+
+
+# call ksvm. Vanilladot is a simple linear kernel.
+model <- ksvm(data[,1:10],data[,11],type="C-svc",kernel="vanilladot",C=100,scaled=TRUE)
+
+# calculate a1…am
+a <- colSums(model@xmatrix[[1]] * model@coef[[1]])
+a
+# calculate a0
+a0 <- -model@b
+a0
+# see what the model predicts
+pred <- predict(model,data[,1:10])
+pred
+# see what fraction of the model’s predictions match the
+# actual classification
+sum(pred == data[,11]) / nrow(data)
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
