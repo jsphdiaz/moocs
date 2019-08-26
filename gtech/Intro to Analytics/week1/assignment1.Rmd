@@ -9,30 +9,33 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Assignment 1
 
-**Question 2.1**
+### Question 2.1
 
-Describe a situation or problem from your job, everyday life, current events, etc., for which a
-classification model would be appropriate. List some (up to 5) predictors that you might use.
+**Describe a situation or problem from your job, everyday life, current events, etc., for which a
+classification model would be appropriate. List some (up to 5) predictors that you might use.**
 
 
-**Question 2.2**
+### Question 2.2
 
-The files credit_card_data.txt (without headers) and credit_card_data-headers.txt
+**The files credit_card_data.txt (without headers) and credit_card_data-headers.txt
 (with headers) contain a dataset with 654 data points, 6 continuous and 4 binary predictor variables. It
 has anonymized credit card applications with a binary response variable (last column) indicating if the
 application was positive or negative. The dataset is the “Credit Approval Data Set” from the UCI Machine
 Learning Repository (https://archive.ics.uci.edu/ml/datasets/Credit+Approval) without the categorical
-variables and without data points that have missing values.
+variables and without data points that have missing values.**
 
 
-1. Using the support vector machine function ksvm contained in the R package kernlab, find a
+**1. Using the support vector machine function ksvm contained in the R package kernlab, find a
 good classifier for this data. Show the equation of your classifier, and how well it classifies the
 data points in the full data set. (Don’t worry about test/validation data yet; we’ll cover that
-topic soon.)
+topic soon.)**
 
-```{r cars}
+
+
+#### Using the Provided Code
+```{r q2}
 #install.packages('kernlab')
 library('kernlab')
 
@@ -45,10 +48,10 @@ model <- ksvm(data[,1:10],data[,11],type="C-svc",kernel="vanilladot",C=100,scale
 
 # calculate a1…am
 a <- colSums(model@xmatrix[[1]] * model@coef[[1]])
-a
+#a
 # calculate a0
 a0 <- -model@b
-a0
+#a0
 # see what the model predicts
 pred <- predict(model,data[,1:10])
 pred
@@ -58,12 +61,124 @@ sum(pred == data[,11]) / nrow(data)
 
 ```
 
-## Including Plots
+With the code provided, we are able to get about **86%** of the classifications correct. We can further improve this by changing the kernel used and by manipulating the C parameter.
 
-You can also embed plots, for example:
+The equation's coefficients and intercept is found bellow in the variable a for the coefficients and a0 for the intercept
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+``` {r }
+
+a
+a0
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+Generally speaking, assuming the data is linearly separable, an increase in C would mean the model will want to avoid misclassifications (of the training data) at a greater rate. We can easily make an SVM model to be amazing at classifying this specific data set with a high enough C.
+
+_note: in this case, the data is not easily seperable by the `vanilladot` kernel, so a high C will actually decrease accuracy. After some trial and error, `rbfdot` seems to be the best kernel for this dataset._
+
+
+
+```{r}
+# call ksvm. Vanilladot is a simple linear kernel.
+model <- ksvm(data[,1:10],data[,11],type="C-svc",kernel="rbfdot",C=10000000,scaled=TRUE)
+
+# calculate a1…am
+a <- colSums(model@xmatrix[[1]] * model@coef[[1]])
+
+# calculate a0
+a0 <- -model@b
+
+# see what the model predicts
+pred <- predict(model,data[,1:10])
+
+# see what fraction of the model’s predictions match the
+# actual classification
+sum(pred == data[,11]) / nrow(data)
+
+```
+
+
+
+As you can see, we get a perfect classification with an extremely large C and the proper kernel selected. While, an accuracy of 100% might seem good, in practice, this is not the case. What we have here is a model that is overfitted. In other words, it's really good at classifying the points we have trained it with, but not so much as a general model.
+
+
+To make a more general model, we can lower C, but without an actual test, we will only be guessing on how good the model actually is. One simple solution is to have a holdout data set. Let's try making a better general model by training on a random 80% of the dataset, while testing on the other 20%.
+
+I will also be performing some parameter tuning in this step. For now, I will only tune C.
+
+```{r}
+set.seed(0)
+
+train_ind <-sample(1:nrow(data),floor(.8*nrow(data)) ,replace = TRUE)
+
+train <- data[train_ind,]
+test <- data[-train_ind,]
+
+currentAccuracy <- 0
+bestAccuracy <- 0
+bestC <- 0
+
+# seq(0.01,1.0001)
+for (c in seq(0.065,0.065,.0001)){
+  
+  model <- ksvm(train[,1:10],train[,11],type="C-svc",kernel="rbfdot",C=c,scaled=TRUE)
+
+  # calculate a1…am
+  a <- colSums(model@xmatrix[[1]] * model@coef[[1]])
+  
+  # calculate a0
+  a0 <- -model@b
+  
+  # see what the model predicts
+  pred <- predict(model,test[,1:10])
+  
+  # see what fraction of the model’s predictions match the
+  # actual classification
+  currentAccuracy <- sum(pred == test[,11]) / nrow(test)
+  
+  if( currentAccuracy > bestAccuracy){
+    
+    bestAccuracy <- currentAccuracy
+    bestC <- c
+    bestModel <- model
+  }
+  
+  
+  #print(c/1000000)
+  #flush.console()
+  
+  
+  
+  
+}
+
+```
+
+
+_NOTE: I'm iterating through .01 to 1 as I've tried going from 1 to 10000 and the best C was still 1._
+```{r}
+
+besta <- colSums(bestModel@xmatrix[[1]] * bestModel@coef[[1]])
+besta0 <-bestModel@b
+
+besta
+besta0
+```
+
+**Using the k-nearest-neighbors classification function kknn contained in the R kknn package,
+suggest a good value of k, and show how well it classifies that data points in the full data set.
+Don’t forget to scale the data (scale=TRUE in kknn)**
+
+
+
+
+First I'll do a kknn with the whole data set.
+``` {r}
+library(kknn)
+
+
+data <- as.matrix(read.table('credit_card_data.txt', sep = '\t'))
+kknn(V1~.,train,test)
+
+```
