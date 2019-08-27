@@ -2,7 +2,9 @@
 title: "Homework 1"
 author: "Joe Diaz"
 date: "8/23/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +17,19 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **Describe a situation or problem from your job, everyday life, current events, etc., for which a
 classification model would be appropriate. List some (up to 5) predictors that you might use.**
+
+For context, I work in a weekly subscription based company. One key problems subscription based companies have is customer churn (customer sunsubscribing). Classificaiton can be used to predict if a given customer will unsubscribe. This can help the business by catching those who are likely to unsubscribe. by giving them offers/discounts before they get the chance to unsubscribe.
+
+It will be a classification model with 2 groups: kept subscription and unsubscribed.
+
+Some key predictors I would use for this model are:
+  
+  1. Order history
+  2. Average price order basket
+  3. Average # of items per order
+  4. How long has the customer been subscribed
+  5. Customer demographics if available (age, income, etc.)
+
 
 
 ### Question 2.2
@@ -143,20 +158,12 @@ for (c in seq(0.065,0.065,.0001)){
     bestC <- c
     bestModel <- model
   }
-  
-  
-  #print(c/1000000)
-  #flush.console()
-  
-  
-  
-  
 }
-
+cat('Achieved best accuracy of',bestAccuracy, 'witk a C of',bestC)
 ```
 
 
-_NOTE: I'm iterating through .01 to 1 as I've tried going from 1 to 10000 and the best C was still 1._
+_NOTE: First, I'm iterating through .01 to 1 as I've tried going from 1 to 10000 and the best C was still 1. Also, I set it to only try .65 to save time during execution as it takes a while to run this portion of the code_
 ```{r}
 
 besta <- colSums(bestModel@xmatrix[[1]] * bestModel@coef[[1]])
@@ -166,19 +173,63 @@ besta
 besta0
 ```
 
+### K-Nearest-Neighbors Implementation
 **Using the k-nearest-neighbors classification function kknn contained in the R kknn package,
 suggest a good value of k, and show how well it classifies that data points in the full data set.
 Don’t forget to scale the data (scale=TRUE in kknn)**
 
+I'll do a kknn with the train test methodology in mind. We'll only do some parameter tuning with k to find the best k possible. 
 
+Some other ideas to tune parameters:
 
+1. distance parameter in the kknn model
+2. the boundary where each prediction becomes a 1 or 0 (right now I've set it if the prediciton is .5 or higher, it is a 1)
 
-First I'll do a kknn with the whole data set.
 ``` {r}
 library(kknn)
+data <- read.table('credit_card_data.txt', sep = '\t')
+set.seed(0)
 
+train_ind <-sample(1:nrow(data),floor(.8*nrow(data)) ,replace = TRUE)
 
-data <- as.matrix(read.table('credit_card_data.txt', sep = '\t'))
-kknn(V1~.,train,test)
+train <- data[train_ind,]
+test <- data[-train_ind,]
 
+bestAccuracy <- 0
+bestK <-1
+
+for(k in 1:20){
+  
+  knnModel <- kknn(V11 ~ .,train, test, k = k, kernel = "rectangular", scale=TRUE)
+
+  pred <- c()
+  for (i in knnModel$fitted.values){
+    
+    if(i>=.5){
+      pred<-append(pred,1)
+    } else {
+      pred<-append(pred,0)
+    }
+}
+
+  accuracy <- sum(pred == test[,11]) / nrow(test)
+  
+  if(accuracy>bestAccuracy){
+    bestAccuracy<-accuracy
+    bestK <- k
+  }
+}
+cat('Achieved best accuracy of',bestAccuracy, 'witk a k of',bestK)
 ```
+### Take-aways
+
+1. In SVM, C is essentially a way to control overfitting.
+
+2. The assumption that if C increases, in-sample fit increases and vice versa is only true if the data is linearly seperable.
+
+3. Overfitting is when a model is fitted way too closely on a specific dataset resulting in a bad general model.
+
+4. Using a hold-out dataset can be used to counter-act overfitting
+
+5. parameter-tuning can be used to find the best K and the best C
+
