@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 **Describe a situation or problem from your job, everyday life, current events, etc., for which a
 classification model would be appropriate. List some (up to 5) predictors that you might use.**
 
-For context, I work in a weekly subscription based company. One key problems subscription based companies have is customer churn (customer sunsubscribing). Classificaiton can be used to predict if a given customer will unsubscribe. This can help the business by catching those who are likely to unsubscribe. by giving them offers/discounts before they get the chance to unsubscribe.
+For context, I work in a weekly subscription based company. One key problems subscription based companies have is customer churn (customer unsubscribing). Classificaiton can be used to predict if a given customer will unsubscribe. This can help the business by catching those who are likely to unsubscribe. by giving them offers/discounts before they get the chance to unsubscribe.
 
 It will be a classification model with 2 groups: kept subscription and unsubscribed.
 
@@ -78,7 +78,7 @@ sum(pred == data[,11]) / nrow(data)
 
 With the code provided, we are able to get about **86%** of the classifications correct. We can further improve this by changing the kernel used and by manipulating the C parameter.
 
-The equation's coefficients and intercept is found bellow in the variable a for the coefficients and a0 for the intercept
+The equation's coefficients and intercept is found below in the variable a for the coefficients and a0 for the intercept
 
 ``` {r }
 
