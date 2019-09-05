@@ -1,8 +1,10 @@
 ---
-title: "Homework 1"
+title: "Homework 2"
 author: "Joe Diaz"
 date: "9/3/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 
@@ -23,7 +25,6 @@ set.seed(0)
 data <- read.table("credit_card_data.txt", stringsAsFactors = FALSE, header = FALSE)
 
 kmax <- 30
-model <- train.kknn(V11~.,data,kmax=30,scale=TRUE)
 accuracy<- c()
 for (k in 1:kmax) {
 
@@ -32,17 +33,29 @@ for (k in 1:kmax) {
     accuracy[k] <- sum(predicted == data$V11)/nrow(data)
 }
 
-cat('Acheived best accuracy of: ', round(max(accuracy),2)*100,'%', ' with k=',which.max(accuracy),sep='')
+cat('Acheived best accuracy of: '
+    , round(max(accuracy),2)*100,'%'
+    , ' with k=',which.max(accuracy),sep='')
 
 ```
 
 
 **(b) splitting the data into training, validation, and test data sets (pick either KNN or SVM; the other**
 **is optional).**
+
+The code below shows how the train, test and validation split is made.
+
+The data split is as follows:
+ 
+Data      | Percentage
+--------- | -------------
+Training  | 70%
+Test      | 15%
+Validation| 15%
 ```{r}
 
 
-idx_train <- sample(nrow(data), size = floor(nrow(data) * 0.6))
+idx_train <- sample(nrow(data), size = floor(nrow(data) * .7))
 train <- data[idx_train,]
 
 
@@ -59,37 +72,56 @@ test = rest[-idx_val, ]
 
 ```
 
+
+Now that we have properly segmented the data, we can now train the data using the training dataset. We will then measure model performance with the test dataset. I find it better to store predictions and inspect manually rather than overwriting one variable.
 ``` {r}
-acc <- c()
+accuracy <- c()
 for (k in 1:20) {
 
-               # fit k-nearest-neighbor model using training set, validate on test set
+     model <- kknn(V11~.,train,test,k=k,scale=TRUE)
 
-     knn_model <- kknn(V11~.,train,validation,k=k,scale=TRUE)
 
-	#  compare models using validation set
+     pred <- round(fitted(model)) 
 
-     pred <- as.integer(fitted(knn_model)+0.5) # round off to 0 or 1
-
-     acc[k+9] = sum(pred == validation$V11) / nrow(validation)
+     accuracy[k] = sum(pred == test$V11) / nrow(test)
 }
 
-acc[10:29]
 
-## [1] 0.7862595 0.7862595 0.7862595 0.7862595 0.7938931 0.7862595 0.7786260 0.7862595 0.7786260
-##[10] 0.7938931 0.7938931 0.7938931 0.7862595 0.7938931 0.7938931 0.8091603 0.8091603 0.8091603
-##[19] 0.8091603 0.8091603
 
-# find best-performing KNN model on validation data
-
-cat("Best KNN model is k=",which.max(acc[10:29]),"\n")
-cat("Best validation set correctness is ",max(acc[10:29]),"\n")
+cat('Acheived best accuracy of: '
+    , round(max(accuracy),2)*100,'%'
+    , ' with k=',which.max(accuracy),sep='')
 
 ```
+
+Now it's time to test it with the validation set using the best model.
+
+```{r}
+best_model <- kknn(V11~.,train,validation,
+               k=which.max(accuracy),
+               scale=TRUE)
+
+     pred <- round(fitted(best_model))
+
+cat("Validation performance: ",round(sum(pred == validation$V11) / nrow(validation),2)*100,"%",sep="")
+
+
+```
+
 
 ### Question 4.1
 **Describe a situation or problem from your job, everyday life, current events, etc., for which a clustering**
 **model would be appropriate. List some (up to 5) predictors that you might use.**
+
+One possible use case for clustering is customer segmentation. For context, I work in an e-commerce company. Grouping like customers might provide us with some insight regarding our customer base.
+
+Some features I would consider are:
+
+    1. Order history (Which products did they buy? How often etc.)
+    2. LTV
+    3. Income
+    4. Family size
+    5. Education
 
 ### Question 4.2
 **The iris data set iris.txt contains 150 data points, each with four predictor variables and one**
@@ -100,3 +132,65 @@ cat("Best validation set correctness is ",max(acc[10:29]),"\n")
 **specific method performed and should not be used to build the model.**
 **Use the R function kmeans to cluster the points as well as possible. Report the best combination of**
 **predictors, your suggested value of k, and how well your best clustering predicts flower type.**
+
+```{r}
+iris <- read.table("iris.txt", header = TRUE)
+head(iris)
+```
+
+The data shows 4 features. 2 being Sepal features and the other 2 being Petal features.
+
+Let's inspect these by doing a scatter plot. I find ggplot to be a good plotting package.
+
+
+```{r}
+library(ggplot2)
+ggplot(iris, aes(Petal.Length, Petal.Width, color = Species)) + geom_point() + ggtitle('Petal Features')
+ggplot(iris, aes(Sepal.Length, Sepal.Width, color = Species)) + geom_point() + ggtitle('Sepal Features')
+
+```
+Looks like Petal metrics separates the data easily while the Sepal metrics not so much. We will try a few combinations to see which is the best.
+
+
+```{r}
+clust1 <- kmeans(iris[,-5], 3, nstart = 1000)
+clust2 <- kmeans(iris[,3:4], 3, nstart = 1000)
+clust3 <- kmeans(iris[,1:2], 3, nstart = 1000)
+```
+
+Now that we have a few different kmeans models, let's inspect how they do. Luckilym we are given their true groupings. We can use this to measure model performance.
+```{r}
+ggplot(iris, aes(Petal.Length, Petal.Width, color = factor(clust1$cluster))) + geom_point() + ggtitle("All Features")
+ggplot(iris, aes(Petal.Length, Petal.Width, color = factor(clust2$cluster))) + geom_point() + ggtitle("Only Petal Features")
+ggplot(iris, aes(Petal.Length, Petal.Width, color = factor(clust3$cluster))) + geom_point() + ggtitle("Only Sepal Features")
+
+```
+
+**All Features**
+
+```{r}
+table(clust1$cluster, iris$Species)
+```
+**Only Petal Features**
+```{r}
+table(clust2$cluster, iris$Species)
+```
+
+**Only Sepal Features**
+```{r}
+table(clust3$cluster, iris$Species)
+```
+
+Just eyeballing the graphs, it seems to be better to just cluster off of Petal metrics. This is confirmed when looking at the cluster matrix.
+`Only Petal Features` beats out `All Features` mainly on grouping out virginica.
+
+As a result, my solution will be a kmeans clustering model using only petal features.
+
+### Solution
+
+```{r}
+clust2
+ggplot(iris, aes(Petal.Length, Petal.Width, color = factor(clust2$cluster))) + geom_point() + ggtitle("Only Petal Features")
+
+```
+
