@@ -2,7 +2,7 @@
 title: "Homework 3"
 author: "Joe Diaz"
 date: "9/10/2019"
-output: html_document
+output: pdf_document
 ---
 ### Question 5.1
 **Using crime data from the file uscrime.txt (http://www.statsci.org/data/general/uscrime.txt,**
@@ -19,14 +19,7 @@ data <- read.table("uscrime.txt", stringsAsFactors = FALSE, header = TRUE)
 ggplot(data, aes(x=Crime)) + geom_density(fill='blue', alpha = .5)
 ```
 
-From the image above, it looks like that the data is not normally distributed. A good test to know for sure is by using the Shapiro-Wilk test. After a bit of googling, it looks like R has an implementation of this test. Perfect!
-
-```{r}
-shapiro.test(data[,"Crime"])
-
-
-```
-Since the P-value is less than .05 , we can reject the null hypothesis that the data is normally distributed safely. 
+From the image above, it looks like that the data is not normally distributed. Though, without the tail to the right, it might be normally distributed. This tells me that the higher values are candidates for outliers.
 
 Next up is a box-whisker plot.
 
@@ -46,6 +39,8 @@ According to the documentation, we can use `type = 11` to test both the lowest a
 grubbs.test(data[,'Crime'], type = 11)
 
 ```
+
+
 Looks like at least the highest OR lowest points are outliers. Let's check them.
 
 ```{r}
@@ -76,18 +71,19 @@ grubbs.test(to_test2, type = 10)
 
 This one does not seem to be an outlier.
 
-**Looks like the highest 2 points are outliers**
+#### Answer
+Looks like the highest 2 points are outliers
 
 
 
-###Question 6.1
+### Question 6.1
 **Describe a situation or problem from your job, everyday life, current events, etc., for which a Change**
 **Detection model would be appropriate. Applying the CUSUM technique, how would you choose the**
 **critical value and the threshold?**
 
-In the world of food supply chain, a change detection model would be beneficial in managning food packaging (i.e putting the correct amount of sauce in a packet). Since mostly machines do these sorts of tasks, a change would be detrimental to the business as it can result in wasted material, or too little of the product packaged. Since an unoticed changed
+In the world of food supply chain, a change detection model would be beneficial in managning food packaging (i.e putting the correct amount of sauce in a packet). Since mostly machines do these sorts of tasks, a change would be detrimental to the business as it can result in wasted material, or too little of the product packaged. Since inspection whether or not there was a change that occured is relatively cheap (we can continue production even while checking as the consequence is minor), I'd imagine being able to set a relatively sensitive model. We can choose a relatively low C and a relatively low threshold for this.
 
-###Question 6.2
+### Question 6.2
 **1. Using July through October daily-high-temperature data for Atlanta for 1996 through 2015, use**
 **a CUSUM approach to identify when unofficial summer ends (i.e., when the weather starts**
 **cooling off) each year. You can get the data that you need from the file temps.txt or online,**
@@ -95,10 +91,9 @@ In the world of food supply chain, a change detection model would be beneficial 
 **https://www.wunderground.com/history/airport/KFTY/2015/7/1/CustomHistory.html . You can**
 **use R if you’d like, but it’s straightforward enough that an Excel spreadsheet can easily do the**
 **job too.**
-**2. Use a CUSUM approach to make a judgment of whether Atlanta’s summer climate has gotten**
-**warmer in that time (and if so, when).**
 
 
+First, let's visualize the data.
 
 ```{r}
 temps <- read.table("temps.txt", stringsAsFactors = FALSE, header = TRUE)
@@ -111,7 +106,150 @@ ggplot(data=temps, aes(x=Date,y=AvgTemps)) +
   geom_point()
 
 
+```
 
-temps[,'Date']
+So there is definitely a change present. The question is where.
+
+With a bit of googling, it is suggested that C should be half of the standard deviation and the threshold should be 4 or 5 times the standard deviation. While these are suggested values, it makes sense because standard deviation is used as the metric to measure distance away from the mean.
+
+The code below is a manual cusum implementation using looping.
+```{r}
+
+
+cusum <- function(xt,prev_st,mean,C) {
+  
+
+  return(max(c(0,prev_st+(mean-xt-C))))  
+  
+}
+
+temps_mean <- mean(temps[1:31,"AvgTemps"])
+
+C <- sd(temps[1:31,"AvgTemps"])/2
+
+thresh <- sd(temps[1:31,"AvgTemps"])*5
+
+temps[,"st"] <- NULL
+temps[1,"st"] <- 0
+
+for(i in 2:nrow(temps)){
+  temps[i,'st'] <- cusum(xt = temps[i,'AvgTemps']
+                         , prev_st = temps[i-1,'st']
+                         , mean = temps_mean
+                         , C = C
+                         )
+}
+
 
 ```
+
+
+In R, we can apply custom functions over rows of data. Let's leverage this to determine whether a data points falls under the threshold
+```{r}
+
+is_above_thresh <- function(x,threshold=thresh){
+  
+  if(x<threshold){
+    return("No Change Detected")
+  } else{
+    return("Change Detected")
+  }
+  
+}
+
+temps[,"thresh"] <- sapply(temps[,"st"],FUN = is_above_thresh)
+
+ggplot(data=temps, aes(x=Date,y=AvgTemps)) +
+  geom_line()+
+  geom_point(aes(color = temps[,"thresh"]))
+
+
+# 30th of August is when summer starts
+```
+
+
+According to cusum, there is a change detected on the very last day of august.
+
+**2. Use a CUSUM approach to make a judgment of whether Atlanta’s summer climate has gotten**
+**warmer in that time (and if so, when).**
+
+Let's manipulate the data so all dates are stacked together.
+
+```{r}
+
+# Plotting with index instead of date as there are missing dates
+
+
+stacked_temps <- data.frame(ncol=2,nrow=0)
+
+colnames(stacked_temps) <- c('date','temp')
+
+
+
+for(col in colnames(temps[85:nrow(temps),2:21])){
+  
+  temp_df<-temps[,c("DAY",col)]
+  temp_df['date'] <- sapply(temp_df[,"DAY"], paste,gsub("X","",col) , sep="")
+  colnames(temp_df)[colnames(temp_df)==col] <- "temp"
+  stacked_temps <- rbind(stacked_temps,temp_df[,c('date','temp')])
+  
+}
+# removing first row as it was a result of the initialization of blank dataframe
+stacked_temps<-stacked_temps[-1,]
+
+stacked_temps[,'date'] <- as.Date(stacked_temps[,'date'], "%d-%B%Y")
+
+
+ggplot(data=stacked_temps, aes(x = as.numeric(row.names(stacked_temps)),y=temp)) +
+  geom_line()
+
+```
+
+The plot above tells me that a change may not be present. Maybe we can use average yearly temperatures.
+```{r}
+
+# utilized dplyr and lubridate as it was more intuitive for me to use these packages when working with dates.
+library(lubridate)
+library(dplyr)
+
+
+yearly_temps<-stacked_temps %>% 
+                group_by(month=floor_date(date, "year")) %>%
+                summarize(summary_variable=mean(temp))
+
+
+colnames(yearly_temps) <- c('date', 'temp')
+
+yearly_temps<-data.frame(yearly_temps)
+
+ggplot(data=yearly_temps, aes(x = as.numeric(row.names(yearly_temps)),y=temp)) +
+  geom_line()
+
+
+```
+From my perspective, it seems that there is no change. Let's try to prove this using cusum.
+
+```{r}
+
+
+C <- 0
+thresh <- 20
+m <- 80 # data hovers around 80
+
+yearly_temps[,"st"] <- NULL
+yearly_temps[1,"st"] <- 0
+
+for(i in 2:nrow(yearly_temps)){
+  yearly_temps[i,'st'] <- cusum(xt = yearly_temps[i,'temp']
+                         , prev_st = yearly_temps[i-1,'st']
+                         , mean = m
+                         , C = C
+                         )
+}
+
+yearly_temps
+
+
+
+```
+After trying a bunch of thresholds and C, there seems to be no change detected.
