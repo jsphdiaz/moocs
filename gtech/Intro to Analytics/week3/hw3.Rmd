@@ -10,6 +10,76 @@ output: html_document
 **outliers in the last column (number of crimes per 100,000 people). Use the grubbs.test function in**
 **the outliers package in R.**
 
+A good way to determine whether a data set has outliers is to visualize it. I think a density plot and some box-whsiker plots are in order!
+
+```{r}
+library(outliers)
+library(ggplot2)
+data <- read.table("uscrime.txt", stringsAsFactors = FALSE, header = TRUE)
+ggplot(data, aes(x=Crime)) + geom_density(fill='blue', alpha = .5)
+```
+
+From the image above, it looks like that the data is not normally distributed. A good test to know for sure is by using the Shapiro-Wilk test. After a bit of googling, it looks like R has an implementation of this test. Perfect!
+
+```{r}
+shapiro.test(data[,"Crime"])
+
+
+```
+Since the P-value is less than .05 , we can reject the null hypothesis that the data is normally distributed safely. 
+
+Next up is a box-whisker plot.
+
+```{r}
+ggplot(data, aes(y=Crime))+
+  geom_boxplot(outlier.colour="black", outlier.shape=16,
+             outlier.size=2, notch=TRUE)
+```
+
+
+According the the plots above, we have reason to believe that outliers exist in the data.
+
+Up next, we will use the grubbs function from the outliers package.
+
+According to the documentation, we can use `type = 11` to test both the lowest and highest points of the distribution.
+```{r}
+grubbs.test(data[,'Crime'], type = 11)
+
+```
+Looks like at least the highest OR lowest points are outliers. Let's check them.
+
+```{r}
+"Is top an outlier?"
+grubbs.test(data[,'Crime'], type = 10)
+
+"Is bottom an outlier?"
+grubbs.test(data[,'Crime'], type = 10, opposite = TRUE)
+
+```
+Considering both P-values, the highest point seems to be more likely to be an outlier. Let's remove that point and check the next highest point.
+
+```{r}
+
+to_test <- data[,'Crime'][-which.max(data[,'Crime'])]
+
+grubbs.test(to_test, type = 10)
+
+```
+
+The next highest looks to be an outlier as well. Let's check the next one!
+
+```{r}
+to_test2 <- to_test[-which.max(to_test)]
+grubbs.test(to_test2, type = 10)
+
+```
+
+This one does not seem to be an outlier.
+
+**Looks like the highest 2 points are outliers**
+
+
+
 ###Question 6.1
 **Describe a situation or problem from your job, everyday life, current events, etc., for which a Change**
 **Detection model would be appropriate. Applying the CUSUM technique, how would you choose the**
@@ -27,3 +97,21 @@ In the world of food supply chain, a change detection model would be beneficial 
 **job too.**
 **2. Use a CUSUM approach to make a judgment of whether Atlanta’s summer climate has gotten**
 **warmer in that time (and if so, when).**
+
+
+
+```{r}
+temps <- read.table("temps.txt", stringsAsFactors = FALSE, header = TRUE)
+temps[,"AvgTemps"] <- rowMeans(temps[,-1])
+
+temps[,"Date"] <- as.Date(temps[,'DAY'], "%d-%B")
+
+ggplot(data=temps, aes(x=Date,y=AvgTemps)) +
+  geom_line()+
+  geom_point()
+
+
+
+temps[,'Date']
+
+```
