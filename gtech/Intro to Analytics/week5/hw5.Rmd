@@ -1,0 +1,52 @@
+---
+title: "Homework 5"
+author: "Joe Diaz"
+date: "9/25/2019"
+output: pdf_document
+---
+
+#### Question 8.1
+**Describe a situation or problem from your job, everyday life, current events, etc., for which a linear**
+**regression model would be appropriate. List some (up to 5) predictors that you might use.**
+
+A nice use case for a linear regression would be predicting the value of a used car to see if you are getting a good deal or not.
+
+Some features I would use are:
+
+- Make
+- Model
+- Age
+- color
+- Location of vendor
+
+
+#### Question 8.2
+**Using crime data from http://www.statsci.org/data/general/uscrime.txt (file uscrime.txt,**
+**description at http://www.statsci.org/data/general/uscrime.html ), use regression (a useful R function is**
+**lm or glm) to predict the observed crime rate in a city with the following data:**
+```{r}
+
+#df <- read.table("uscrime.txt", stringsAsFactors = FALSE, header = TRUE)
+df<-read.delim("http://www.statsci.org/data/general/uscrime.txt")
+
+
+model <- glm(Crime ~ . , data=df, family="gaussian")
+summary(model)
+
+```
+
+
+## Model Validation
+I referenced this to perform cross-validation with glm https://stat.ethz.ch/R-manual/R-patched/library/boot/html/cv.glm.html
+```{r}
+library(boot)
+# sum of squared differences
+sq_diff <- sum((df$Crime - mean(df$Crime))^2)
+
+cross_val_model <- cv.glm(df,model,K=7)
+
+# R squared
+1 - cross_val_model$delta[1]*nrow(df)/sq_diff
+```
+
+R-Squared is fairly low when using all the available features!
