@@ -1,0 +1,71 @@
+---
+title: "Homework 6"
+author: "Joe Diaz"
+date: "10/1/2019"
+output: pdf_document
+---
+
+#### Question 9.1
+**Using the same crime data set uscrime.txt as in Question 8.2, apply Principal Component Analysis**
+**and then create a regression model using the first few principal components. Specify your new model in**
+**terms of the original variables (not the principal components), and compare its quality to that of your**
+**solution to Question 8.2. You can use the R function prcomp for PCA. (Note that to first scale the data,**
+**you can include scale. = TRUE to scale as part of the PCA function. Don’t forget that, to make a**
+**prediction for the new city, you’ll need to unscale the coefficients (i.e., do the scaling calculation in**
+**reverse)!)**
+
+
+Let's read in the table and run pca.
+```{r}
+
+df <- read.table("uscrime.txt", stringsAsFactors = FALSE, header = TRUE)
+pca <- prcomp(df[,1:15], scale. = TRUE)
+
+components <- pca$x[,1:4] # store key columns as a dataframe
+summary(pca)
+
+```
+
+build linear model on pca
+```{r}
+crime_components <- cbind(components, df[,16])
+model <- lm(V5~., data = as.data.frame(crime_components))
+#summary(model)
+
+intercept <- model$coefficients[1]
+coeff <- model$coefficients[2:5]
+
+```
+
+reverse pca
+
+```{r}
+alphas <- pca$rotation[,1:4] %*% coeff
+
+
+origAlpha <- alphas/sapply(df[,1:15],sd)
+
+m <- sapply(df[,1:15],mean)
+std <- sapply(df[,1:15],sd)
+
+intercept - sum(coeff*m/std)
+
+origIntercept<- sum(coeff*sapply(df[,1:15],mean)/sapply(df[,1:15],sd))
+
+```
+generate predictions on original alphas and betas
+```{r}
+preds <- as.matrix(df[,1:15]) %*% origAlpha + origIntercept
+
+
+
+sse = sum((preds - df[,16])^2)
+tot_ss = sum((df[,16] - mean(df[,16]))^2)
+
+
+
+r2 <- 1 - sse/tot_ss
+
+r2
+```
+achieved r2 of .31
